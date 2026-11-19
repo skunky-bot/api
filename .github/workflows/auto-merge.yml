@@ -25,10 +25,27 @@ jobs:
           set -euo pipefail
           # Do not activate auto-merge if branch protection is missing, unreadable,
           # or the required API CI check has not been configured.
-          rules="$(gh api "repos/$REPO/branches/$BASE/protection/required_status_checks")"
-          echo "$rules" | jq -e '
-            ([.contexts[]?] + [.checks[]?.context]) | index("test") != null
-          ' >/dev/null
+          # Rulesets and classic branch protection have different API endpoints.
+          # Require an active ruleset matching the base branch and an explicit
+          # required `test` check; fail closed otherwise.
+          rulesets="$(gh api --paginate "repos/$REPO/rulesets")"
+          ids="$(echo "$rulesets" | jq -r '.[] | select(.enforcement=="active" and .target=="branch") | .id')"
+          valid=false
+          while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            rule="$(gh api "repos/$REPO/rulesets/$id")"
+            if echo "$rule" | jq -e --arg branch "refs/heads/$BASE" '
+              (.conditions.ref_name.include // [] | index($branch) != null or index("~DEFAULT_BRANCH") != null)
+              and
+              ([.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[]?.context] | index("test") != null)
+              and
+              ([.rules[] | select(.type=="pull_request")] | length > 0)
+            ' >/dev/null; then
+              valid=true
+              break
+            fi
+          done <<< "$ids"
+          [ "$valid" = true ]
       - name: Request GitHub native auto-merge
         env:
           GH_TOKEN: ${{ github.token }}
