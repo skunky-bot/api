@@ -52,3 +52,23 @@ Visit `http://127.0.0.1:8000/docs` for the OpenAPI UI. In production, disable or
 - [Source registry](https://github.com/skunky-bot/sources)
 
 The repositories currently document different deployment approaches. **No hosting or migration decision is implied by this README.** Select a single deployment architecture through a documented architecture decision record before consolidating services.
+
+## Skunky service preview (development-only)
+
+`POST /pipeline/preview` is an authenticated, **stateless** preview endpoint which calls registered internal services in order: `search → scan → collect`. It accepts a bounded HTML document supplied by the caller. The API verifies that the source ID is present in the selected registry and the source hostname matches. It **does not fetch websites, persist contacts, run background scraping, or authorize outreach**.
+
+Set `SKUNKY_SEARCH_URL`, `SKUNKY_SCAN_URL`, `SKUNKY_COLLECT_URL`, and a shared `SKUNKY_SERVICE_TOKEN` through deployment secrets. Keep these service endpoints on a private network and use HTTPS/mTLS in production. When unconfigured, the preview returns 503.
+
+Example request body (requires an authenticated bearer token):
+
+```json
+{
+  "query": "demo",
+  "source_id": "example-docs",
+  "source_url": "https://example.com/",
+  "html": "<a href=\"mailto:info@example.com\">Contact</a>",
+  "region": "ZA"
+}
+```
+
+The preview fixture only validates integration wiring. See `skunky-bot/www/docs/architecture/ADR-0001-skunky-platform.md` for migration gates.
