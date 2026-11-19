@@ -34,3 +34,10 @@ Automation cannot guarantee production correctness from unit tests alone.
 Add secret scanning, dependency scanning, integration tests, and deployment
 gates as required checks before automating production-impacting merges.
 Never grant untrusted PR code access to the privileged automation token.
+
+## Existing pull requests
+
+For PRs opened before this workflow was merged, enable native auto-merge
+individually after repository settings are configured. Do not merge PRs
+with pending, missing, or failing required checks. The action's initial
+installation does not retroactively evaluate old pull requests.
