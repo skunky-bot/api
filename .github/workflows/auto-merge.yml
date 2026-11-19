@@ -1,0 +1,40 @@
+name: Guarded native PR auto-merge
+
+# No PR code is checked out or executed by this privileged workflow.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: ${{ !github.event.pull_request.draft && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify required test check is enforced
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Do not activate auto-merge if branch protection is missing, unreadable,
+          # or the required API CI check has not been configured.
+          rules="$(gh api "repos/$REPO/branches/$BASE/protection/required_status_checks")"
+          echo "$rules" | jq -e '
+            ([.contexts[]?] + [.checks[]?.context]) | index("test") != null
+          ' >/dev/null
+      - name: Request GitHub native auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # GitHub enforces all branch-protection checks, reviews and rules.
+          # Repository setting "Allow auto-merge" must also be enabled.
+          gh pr merge "$NUMBER" --repo "$REPO" --auto --squash --delete-branch
