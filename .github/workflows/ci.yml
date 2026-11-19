@@ -17,7 +17,7 @@ jobs:
       SECRET_KEY: ci-only-not-a-production-signing-key-use-unique-credentials
       BOOTSTRAP_ADMIN_USERNAME: ci_admin
       BOOTSTRAP_ADMIN_PASSWORD: ci-only-strong-test-password-change-in-production
-      BOOTSTRAP_ADMIN_EMAIL: ci-admin@example.invalid
+      BOOTSTRAP_ADMIN_EMAIL: ci-admin@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
