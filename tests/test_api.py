@@ -1,3 +1,5 @@
+import os
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -12,9 +14,11 @@ def test_healthcheck():
 
 
 def test_login_and_job_flow():
+    username = os.environ["BOOTSTRAP_ADMIN_USERNAME"]
+    password = os.environ["BOOTSTRAP_ADMIN_PASSWORD"]
     login = client.post(
         "/auth/login",
-        data={"username": "admin", "password": "change-me-now"},
+        data={"username": username, "password": password},
     )
     assert login.status_code == 200, login.text
     token = login.json()["access_token"]
@@ -34,6 +38,13 @@ def test_login_and_job_flow():
 
     status_resp = client.get(f"/jobs/{job_id}", headers=headers)
     assert status_resp.status_code == 200, status_resp.text
+    assert status_resp.json()["status"] == "failed"
+    assert "not configured" in status_resp.json()["error"].lower()
 
     result_resp = client.get(f"/results/{job_id}", headers=headers)
-    assert result_resp.status_code in (200, 409), result_resp.text
+    assert result_resp.status_code == 409, result_resp.text
+
+
+def test_job_requires_authentication():
+    response = client.post("/jobs", json={"target": "https://example.com"})
+    assert response.status_code == 401
