@@ -51,7 +51,7 @@ async def preview(body: PreviewIn, _user=Depends(get_current_user)) -> dict:
             found.raise_for_status()
             sources = found.json()["sources"]
             selected = next((s for s in sources if s["id"] == body.source_id and s["enabled"]), None)
-            if not selected or urlsplit(selected["url"]).hostname != urlsplit(source_url).hostname:
+            if not selected or selected["url"].rstrip("/") != source_url.rstrip("/"):
                 raise HTTPException(422, "Source is not approved for this preview")
             scanned = await client.post(
                 f"{scan_url.rstrip('/')}/v1/extract",
