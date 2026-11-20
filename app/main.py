@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.bootstrap import bootstrap_admin_user
 from app.db.session import Base, engine
-from app.routers import auth, jobs, results, pipeline
+from app.routers import auth, collections, jobs, pipeline, results
 
 Base.metadata.create_all(bind=engine)
 bootstrap_admin_user()
@@ -28,6 +28,7 @@ app.include_router(auth.router, prefix=settings.api_v1_prefix, tags=["auth"])
 app.include_router(jobs.router, prefix=settings.api_v1_prefix, tags=["jobs"])
 app.include_router(results.router, prefix=settings.api_v1_prefix, tags=["results"])
 app.include_router(pipeline.router, prefix=settings.api_v1_prefix)
+app.include_router(collections.router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/healthz", summary="Health check")

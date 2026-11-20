@@ -1,6 +1,6 @@
 # SkunkScrape API
 
-FastAPI control-plane scaffold for SkunkScrape. This service provides authentication, job submission, job-status lookup, and result retrieval. **Scraping is not yet implemented by this service:** the current job runner simulates execution and reports zero records.
+FastAPI control plane for SkunkScrape. The web collector runs through the authenticated `/collections` API and a dedicated worker. The legacy `/jobs` runner reports that its scraper is unavailable.
 
 ## API
 
@@ -72,3 +72,46 @@ Example request body (requires an authenticated bearer token):
 ```
 
 The preview fixture only validates integration wiring. See `skunky-bot/www/docs/architecture/ADR-0001-skunky-platform.md` for migration gates.
+
+## Web Collector
+
+Set `SKUNKY_COLLECTOR_ENABLED=true` for the API and worker. Start the API first to initialise its database. Start one worker with `python -m app.services.collector_worker` using the same `DATABASE_URL` and internal pipeline environment variables. The [console repository](https://github.com/skunky-bot/www#web-collector) includes a Compose profile with a persistent development database.
+
+All collector routes require the operator's bearer token.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/collections` | Save criteria and queue the first scan |
+| `GET` | `/collections` | List the operator's scans and schedules |
+| `GET` | `/collections/{id}` | Read current state and the latest scan outcome |
+| `PATCH` | `/collections/{id}` | Set `{"paused": true}` or `{"paused": false}` for a continuous collection |
+| `GET` | `/collections/{id}/contacts` | Read stored contacts with first source URL and observation dates |
+
+Example continuous request:
+
+```json
+{"query":"solar Cape Town","mode":"continuous","interval_minutes":60,"region":"ZA","source_limit":5}
+```
+
+Use `mode: "once"` and omit `interval_minutes` for a single pass. Continuous intervals range from 15 to 1,440 minutes and are measured from the end of each run. Each collection retains unique email addresses and phone numbers across runs. Interrupted runs become eligible again after their worker lease expires. A pause prevents an in-flight run from saving results.
+
+The worker scans the exact public HTTPS URLs approved in the Search service registry. Review source permissions and purpose before enabling each entry. For example:
+
+```json
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "solar-directory",
+      "label": "Cape Town solar installers",
+      "url": "https://directory.example.org/solar/contact",
+      "tags": ["solar", "Cape Town"],
+      "enabled": false,
+      "mode": "web-collection",
+      "outreach_allowed": false
+    }
+  ]
+}
+```
+
+Point Search at the reviewed file with `SKUNKY_SOURCE_REGISTRY_PATH` and set `enabled: true` on approved entries. The worker checks `robots.txt`, uses a public IP pinned to the registered TLS hostname, limits page sizes and requests, and skips redirected URLs. Configure the worker's egress firewall and data retention before a production rollout.

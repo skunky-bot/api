@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +17,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
     database_url: str = "sqlite:///./skunkscrape_api.db"
+    collector_enabled: bool = Field(default=False, validation_alias="SKUNKY_COLLECTOR_ENABLED")
 
     bootstrap_admin_username: str = "admin"
     bootstrap_admin_password: str = "change-me-now"

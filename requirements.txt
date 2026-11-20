@@ -10,3 +10,4 @@ python-multipart
 pytest
 httpx
 email-validator
+protego>=0.7,<1
